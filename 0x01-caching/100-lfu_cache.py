@@ -1,73 +1,63 @@
 #!/usr/bin/env python3
-"""Least Frequently Used caching module.
-"""
-from collections import OrderedDict
-
+"""Module for Least Frequently Used caching"""
 from base_caching import BaseCaching
+from collections import OrderedDict
 
 
 class LFUCache(BaseCaching):
-    """Represents an object that allows storing and
-    retrieving items from a dictionary with a LFU
-    removal mechanism when the limit is reached.
-    """
+    """Class object for storing and retrieving items with LFU removal"""
     def __init__(self):
-        """Initializes the cache.
-        """
+        """Initialise the caching system class"""
         super().__init__()
         self.cache_data = OrderedDict()
-        self.keys_freq = []
+        self.freqTracker = []
 
-    def __reorder_items(self, mru_key):
-        """Reorders the items in this cache based on the most
-        recently used item.
-        """
-        max_positions = []
-        mru_freq = 0
-        mru_pos = 0
-        ins_pos = 0
-        for i, key_freq in enumerate(self.keys_freq):
-            if key_freq[0] == mru_key:
-                mru_freq = key_freq[1] + 1
-                mru_pos = i
+    def freqUpdate(self, mruKey):
+        """Updates the items in the cache based on the most recently used"""
+        maxPos = []
+        mruFreq = 0
+        mruPos = 0
+        insertPos = 0
+        for idx, freqTrack in enumerate(self.freqTracker):
+            if freqTrack[0] == mruKey:
+                mruFreq = freqTrack[1] + 1
+                mruPos = idx
                 break
-            elif len(max_positions) == 0:
-                max_positions.append(i)
-            elif key_freq[1] < self.keys_freq[max_positions[-1]][1]:
-                max_positions.append(i)
-        max_positions.reverse()
-        for pos in max_positions:
-            if self.keys_freq[pos][1] > mru_freq:
+            elif len(maxPos) == 0:
+                maxPos.append(idx)
+            elif freqTrack[1] < self.freqTracker[maxPos[-1]][1]:
+                maxPos.append(idx)
+        maxPos.reverse()
+        for pos in maxPos:
+            if self.freqTracker[pos][1] > mruFreq:
                 break
-            ins_pos = pos
-        self.keys_freq.pop(mru_pos)
-        self.keys_freq.insert(ins_pos, [mru_key, mru_freq])
+            insertPos = pos
+        self.freqTracker.pop(mruPos)
+        self.freqTracker.insert(insertPos, [mruKey, mruFreq])
 
     def put(self, key, item):
-        """Adds an item in the cache.
-        """
+        """Puts/Adds an item in the cache"""
         if key is None or item is None:
             return
         if key not in self.cache_data:
             if len(self.cache_data) + 1 > BaseCaching.MAX_ITEMS:
-                lfu_key, _ = self.keys_freq[-1]
-                self.cache_data.pop(lfu_key)
-                self.keys_freq.pop()
-                print("DISCARD:", lfu_key)
+                lfuKey, _ = self.freqTracker[-1]
+                self.cache_data.pop(lfuKey)
+                self.freqTracker.pop()
+                print("DISCARD:", lfuKey)
             self.cache_data[key] = item
-            ins_index = len(self.keys_freq)
-            for i, key_freq in enumerate(self.keys_freq):
-                if key_freq[1] == 0:
-                    ins_index = i
+            insertIdx = len(self.freqTracker)
+            for idx, freqTrack in enumerate(self.freqTracker):
+                if freqTrack[1] == 0:
+                    insertIdx = idx
                     break
-            self.keys_freq.insert(ins_index, [key, 0])
+            self.freqTracker.insert(insertIdx, [key, 0])
         else:
             self.cache_data[key] = item
-            self.__reorder_items(key)
+            self.freqUpdate(key)
 
     def get(self, key):
-        """Retrieves an item by key.
-        """
+        """Gets/Retrieves an item from the cache using a specific key"""
         if key is not None and key in self.cache_data:
-            self.__reorder_items(key)
+            self.freqUpdate(key)
         return self.cache_data.get(key, None)
